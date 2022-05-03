@@ -1,2 +1,2 @@
 # IndoorLooseComb
-the ekf loose combination of INS
+the ekf loose combination of INS, UWB, odom etc.
