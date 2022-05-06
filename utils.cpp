@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-04 10:29:16
- * @LastEditTime        : 2022-05-04 19:45:12
+ * @LastEditTime        : 2022-05-06 17:01:57
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\utils.cpp
@@ -54,4 +54,22 @@ void ReadIMUdata_odom(std::ifstream &fimudata, IMUDATA_T &imu_data)
     >> ax >> ay >> az >> temp >> temp;
     imu_data.gyro_data << gx, gy, gz;
     imu_data.accel_data << ax, ay, az;
+}
+
+void ReakEKFdata(std::ifstream &fimudata, EKFDATA_T &ekf_data)
+{
+    IMUDATA_T imudata;
+    ODOMDATA_T odomdata;
+
+    fimudata >> imudata.timestamp >>
+        imudata.gyro_data[0] >> imudata.gyro_data[1] >> imudata.gyro_data[2] >>
+        imudata.accel_data[0] >> imudata.accel_data[1] >> imudata.accel_data[2] >>
+        odomdata.vel_data[0] >> odomdata.vel_data[1];
+    odomdata.vel_data[0] = (odomdata.vel_data[0] + odomdata.vel_data[1]) / 2.0;
+    odomdata.vel_data[1] = 0;
+    odomdata.vel_data[2] = 0;
+    odomdata.valid = true;
+    odomdata.timestamp = imudata.timestamp;
+    ekf_data.imu_data = imudata;
+    ekf_data.odom_data = odomdata;
 }

@@ -16,5 +16,6 @@ include_directories(
     "D:/software/programer/LIB/eigen-3.3.9/"
 )
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
-# message(${DIR_SRCS})
-add_executable(testmech ${DIR_SRCS})
+message(${DIR_SRCS})
+# add_executable(testmech testmech.cpp ${DIR_SRCS})
+add_executable(testekf testekf.cpp ${DIR_SRCS})

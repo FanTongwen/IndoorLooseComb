@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-03 20:31:46
- * @LastEditTime        : 2022-05-05 16:21:45
+ * @LastEditTime        : 2022-05-06 17:09:59
  * @LastEditors         : Fantongwen
  * @Description         : 测试主函数入口
  * @FilePath            : \IndoorLooseComb\testmech.cpp
@@ -13,7 +13,7 @@
 #include <fstream>
 #include <iostream>
 #include "ekf.h"
-int main(int argc, char** argv)
+int main1(int argc, char** argv)
 {
     std::ifstream fimudata("F:\\affairs\\courses\\NavSystemDesign\\uwb_20220429\\02\\HL_INSPROBE_1_VEL_IMU.txt", std::ios_base::in);
     IMUDATA_T imu_data;

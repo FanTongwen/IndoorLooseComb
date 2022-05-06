@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-04 09:57:41
- * @LastEditTime        : 2022-05-04 19:02:57
+ * @LastEditTime        : 2022-05-06 20:30:56
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\mech.cpp
@@ -29,22 +29,27 @@ mech::~mech()
 void mech::mech_updatatick(const IMUDATA_T &imu_data)
 {
     double dt;
-    Eigen::Matrix3d c_bn_new;
     Eigen::Vector3d v_n_new;
     Eigen::Vector3d p_n_new;
 
     dt = imu_data.timestamp - pva_state->timestamp;
     // 姿态更新
-    c_bn_new = pva_state->c_bn + pva_state->c_bn * Vector2CrossMatrix(imu_data.gyro_data * dt);
+    Eigen::Vector3d phi;
+    phi = imu_data.gyro_data * dt;
+    Eigen::Quaterniond q_bb;
+    Eigen::Quaterniond q_bn_new;
+    q_bb.w() = cos(0.5 * phi.norm());
+    q_bb.vec() = sin(0.5 * phi.norm()) / (0.5 * phi.norm()) * 0.5 * phi;
+    q_bn_new = pva_state->q_bn * q_bb;
+    pva_state->q_bn = q_bn_new;
+    pva_state->c_bn = q_bn_new.matrix();
+    pva_state->e_bn = DCM2Euler(pva_state->c_bn);
     // 速度更新
-    v_n_new = pva_state->v_n + ((c_bn_new * imu_data.accel_data) - G_N) * dt;
+    v_n_new = pva_state->v_n + ((pva_state->c_bn * imu_data.accel_data) - G_N) * dt;
     // 位置更新
     p_n_new = pva_state->p_n + v_n_new * dt;
 
     pva_state->timestamp = imu_data.timestamp;
-    pva_state->c_bn = c_bn_new;
-    pva_state->e_bn = DCM2Euler(c_bn_new);
-    pva_state->q_bn = Euler2Quart(pva_state->e_bn);
     pva_state->v_n = v_n_new;
     pva_state->p_n = p_n_new;
     // log

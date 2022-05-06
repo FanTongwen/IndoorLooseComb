@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-03 20:29:27
- * @LastEditTime        : 2022-05-06 09:24:40
+ * @LastEditTime        : 2022-05-06 17:13:39
  * @LastEditors         : Fantongwen
  * @Description         : 需要的工具函数,和数据结构
  * @FilePath            : \IndoorLooseComb\utils.h
@@ -114,12 +114,21 @@ typedef struct ST_EKF_MAT
     }
 } EKF_MAT_T;
 
-typedef struct ST_ODOMSTATE
+// 里程计状态
+typedef struct ST_ODOM_INFO
 {
-    Eigen::Vector3d e_bv;
-    Eigen::Matrix3d c_bv;
-    Eigen::Vector3d l_bv;
-} ODOMSTATE;
+    Eigen::Vector3d e_bv; // 安装欧拉角 b系到v系
+    Eigen::Matrix3d c_bv; // b系到v系旋转矩阵
+    Eigen::Vector3d l_bv; // 小车中心相对于imu杆臂
+} ODOM_INFO_T;
+
+// 传感器参数
+typedef struct ST_SENSOR_PARAM
+{
+    Eigen::Vector3d odom_scale_factor;
+    Eigen::Vector3d gyro_bias;
+    Eigen::Vector3d accel_bias;
+} SENSOR_PARAM_T;
 
 const Eigen::Vector3d G_N = {0, 0, -9.7936};
 const double R2D = (180.0 / M_PI);
@@ -128,18 +137,19 @@ const double HOUR2S = 3600.0;
 const double SQRT_HOUR2S = 60.0;
 const double MGAL = 1.0E-5;
 // IMU参数
-const double VRW = 1 / SQRT_HOUR2S;
-const double ARW = 1 * D2R / SQRT_HOUR2S;
-const double GYRO_BIAS_STD = 1 * D2R / HOUR2S;
+const double VRW = 0.1 / SQRT_HOUR2S;
+const double ARW = 0.001 * D2R / SQRT_HOUR2S;
+const double GYRO_BIAS_STD = 10 * D2R / HOUR2S;
 const double GYRO_BIAS_CORR_TIME = 1 * HOUR2S;
-const double ACCEL_BIAS_STD = 1 * MGAL;
+const double ACCEL_BIAS_STD = 50 * MGAL;
 const double ACCEL_BIAS_CORR_TIME = 1 * HOUR2S;
 // ODOM参数
-const double ODOM_STD = 1;
-const double ODOM_SCALE_STD = 1;
+const double ODOM_STD = 1.2;
+const double ODOM_SCALE_STD = 10000 * 1e-6;
 
 Eigen::Matrix3d Vector2CrossMatrix(const Eigen::Vector3d &a);
 Eigen::Vector3d DCM2Euler(const Eigen::Matrix3d &dcm);
 Eigen::Quaterniond Euler2Quart(const Eigen::Vector3d &vec);
 
 void ReadIMUdata(std::ifstream &fimudata, IMUDATA_T &imu_data);
+void ReakEKFdata(std::ifstream &fimudata, EKFDATA_T &ekf_data);
