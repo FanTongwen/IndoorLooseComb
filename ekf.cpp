@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-05 16:40:48
- * @LastEditTime        : 2022-05-06 19:53:56
+ * @LastEditTime        : 2022-05-07 16:28:13
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\ekf.cpp
@@ -9,6 +9,7 @@
  */
 
 #include "ekf.h"
+#include <iomanip>
 
 // TODO: 为指针分配内存并初始化 打开文件
 ekf::ekf(
@@ -27,7 +28,7 @@ ekf::ekf(
     I_3_3.setIdentity();
     P_mat.block<3, 3>(9, 9) = I_3_3 * GYRO_BIAS_STD * GYRO_BIAS_STD;
     P_mat.block<3, 3>(12, 12) = I_3_3 * ACCEL_BIAS_STD * ACCEL_BIAS_STD;
-    P_mat(15, 15) = ODOM_STD * ODOM_STD;
+    P_mat(15, 15) = ODOM_SCALE_STD * ODOM_SCALE_STD;
     ekf_mat->P_mat = P_mat;
     Eigen::Matrix<double, 16, 13> G_mat;
     G_mat.setZero();
@@ -44,6 +45,8 @@ ekf::ekf(
     ekfdata_last = new EKFDATA_T();
     EKFdataCompensate(ekf_data);
     *ekfdata_last = *ekfdata_current;
+    // ekf_odom_ds
+    ekf_odom_ds = new ODOMDATA_DOWNSAMPLE_T(ekf_data.odom_data.timestamp, ODOMDATA_INTERVAL_SET);
     // fekfdata
     fekfdata.open("F:\\affairs\\courses\\NavSystemDesign\\UWB_LooseComb\\IndoorLooseComb\\data\\ekfmid.txt", std::ios::out);
 }
@@ -103,7 +106,7 @@ void ekf::EKFpredictUpdate(const double &delta_t)
     / GYRO_BIAS_CORR_TIME * I_3_3;
     q_mat.block<3, 3>(9, 9) = 2 * ACCEL_BIAS_STD * ACCEL_BIAS_STD
     / ACCEL_BIAS_CORR_TIME * I_3_3;
-    q_mat(12, 12) = 2 * ODOM_SCALE_STD * ODOM_SCALE_STD; // NOTE: 这里怎么给里程计零偏
+    q_mat(12, 12) =  ODOM_SCALE_STD * ODOM_SCALE_STD; // NOTE: 这里怎么给里程计零偏
     ekf_mat->q_mat = q_mat;
     // 求Q_mat
     Eigen::Matrix<double, 16, 16> Q_mat;
@@ -115,7 +118,7 @@ void ekf::EKFpredictUpdate(const double &delta_t)
     pva_state = NULL;
 }
 
-void ekf::EKFmeasurementUpdate(const double &delta_t)
+bool ekf::EKFmeasurementUpdate(const double &delta_t)
 {
     Eigen::Matrix3d I_3_3;
     I_3_3.setIdentity();
@@ -132,23 +135,25 @@ void ekf::EKFmeasurementUpdate(const double &delta_t)
     Eigen::Vector3d delta_z;
     Eigen::Vector3d v_v_odom = odom_data->vel_data;
     Eigen::Vector3d v_v_ins = c_bv * c_nb * pva_state->v_n - 
-    c_bv * Vector2CrossMatrix(ekf_odom_info->l_bv) * imu_data->gyro_data;
+    c_bv * Vector2CrossMatrix(ekf_odom_info->l_bv) * imu_data->gyro_data; // NOTE: 小影响
     delta_z = v_v_ins - v_v_odom;
     ekf_mat->delta_z = delta_z;
 
     // 求观测矩阵 H_mat
+    Eigen::Vector3d I_3_1;
+    I_3_1.setOnes();
     Eigen::Matrix<double, 3, 16> H_mat;
     H_mat.setZero();
 
     H_mat.block<3, 3>(0, 3) = c_bv * c_nb;
     H_mat.block<3, 3>(0, 6) = -c_bv * c_nb * Vector2CrossMatrix(pva_state->v_n);
     H_mat.block<3, 3>(0, 9) = -c_bv * Vector2CrossMatrix(ekf_odom_info->l_bv);
-    H_mat.block<3, 1>(0, 15) = -v_v_odom / (1.0 + ekf_mat->delta_x(15, 0));
+    H_mat.block<3, 1>(0, 15) = -v_v_odom / (1.0 + ekf_mat->delta_x(15, 0)); // -v_v_odom[0] * I_3_1 NOTE: 细微影响
     ekf_mat->H_mat = H_mat;
     // 求观测协方差矩阵 R_mat
     ekf_mat->R_mat = ODOM_STD * ODOM_STD * I_3_3;
     // ekf量测更新公式
-    ekf_mat->ekf_measurement();
+    return ekf_mat->ekf_measurement();
 }
 
 // 量测更新完成之后进行的误差校正
@@ -201,10 +206,16 @@ void ekf::EKFUpdate(const EKFDATA_T &ekf_data, int &odom_update_flag)
     odom_update_flag = 0;
     double dt;
     dt = ekf_data.imu_data.timestamp - ekfdata_current->imu_data.timestamp;
+    ODOMDATA_T odom_data_ds;
+    odom_data_ds = ekf_odom_ds->downsample_updata(ekf_data.odom_data);
     // odom时间戳小于上一时刻imu 需要更新odom数据
     if(ekf_data.odom_data.timestamp >= ekfdata_last->imu_data.timestamp
-    && ekf_data.odom_data.timestamp <= ekf_data.imu_data.timestamp)
+    && ekf_data.odom_data.timestamp <= ekf_data.imu_data.timestamp
+    && odom_data_ds.valid)
     {
+        EKFDATA_T ekf_data_ds;
+        ekf_data_ds = ekf_data;
+        ekf_data_ds.odom_data = odom_data_ds;
         // 量测
         double dt1, dt2;
         dt1 = ekf_data.odom_data.timestamp - ekfdata_last->imu_data.timestamp;
@@ -213,24 +224,24 @@ void ekf::EKFUpdate(const EKFDATA_T &ekf_data, int &odom_update_flag)
         {
             // 上一刻的时间差
             dt = ekfdata_current->imu_data.timestamp - ekfdata_last->imu_data.timestamp;
-            EKFmeasurementUpdate(dt);
-            EKFcorrectUpdate();
+            if(EKFmeasurementUpdate(dt))
+                EKFcorrectUpdate();
             // 此刻的时间差
             dt = ekf_data.imu_data.timestamp - ekfdata_current->imu_data.timestamp;
-            EKFdataCompensate(ekf_data); // 补偿同时更新了ekfdata_current
+            EKFdataCompensate(ekf_data_ds); // 补偿同时更新了ekfdata_current
             ekf_mech->mech_updatatick(ekfdata_current->imu_data);
             EKFpredictUpdate(dt);
         }
         else
         {
             dt = ekf_data.imu_data.timestamp - ekfdata_current->imu_data.timestamp;
-            EKFdataCompensate(ekf_data); // 补偿同时更新了ekfdata_current
+            EKFdataCompensate(ekf_data_ds); // 补偿同时更新了ekfdata_current
             ekf_mech->mech_updatatick(ekfdata_current->imu_data);
             EKFpredictUpdate(dt);
-            EKFmeasurementUpdate(dt);
-            EKFcorrectUpdate();
+            if(EKFmeasurementUpdate(dt))
+                EKFcorrectUpdate();
         }
-        odom_update_flag = 1;
+        odom_update_flag = 1; // 需要读下一个odom的数据
     }
     else
     {
@@ -238,6 +249,12 @@ void ekf::EKFUpdate(const EKFDATA_T &ekf_data, int &odom_update_flag)
         {
             odom_update_flag = 1;
         }
+        if (ekf_data.odom_data.timestamp >= ekfdata_last->imu_data.timestamp
+            && ekf_data.odom_data.timestamp <= ekf_data.imu_data.timestamp)
+        {
+            odom_update_flag = 1;
+        }
+        
         // 机械编排
         dt = ekf_data.imu_data.timestamp - ekfdata_current->imu_data.timestamp;
         EKFdataCompensate(ekf_data);
@@ -245,4 +262,11 @@ void ekf::EKFUpdate(const EKFDATA_T &ekf_data, int &odom_update_flag)
         EKFpredictUpdate(dt);
     }
     *ekfdata_last = *ekfdata_current;
+
+    fekfdata << std::setprecision(16) << ekf_data.imu_data.timestamp
+             << " " << std::setprecision(16) << ekf_sensor_param->gyro_bias[0] << " " << std::setprecision(16) << ekf_sensor_param->gyro_bias[1] << " " << std::setprecision(16) << ekf_sensor_param->gyro_bias[2]
+             << " " << std::setprecision(16) << ekf_sensor_param->accel_bias[0] << " " << std::setprecision(16) << ekf_sensor_param->accel_bias[1] << " " << std::setprecision(16) << ekf_sensor_param->accel_bias[2]
+             << " " << std::setprecision(16) << ekf_sensor_param->odom_scale_factor[0] << " " << std::setprecision(16) << ekf_sensor_param->odom_scale_factor[1] << " " << std::setprecision(16) << ekf_sensor_param->odom_scale_factor[2]
+             << " " << std::setprecision(16) << ekf_mat->delta_z[0] << " " << std::setprecision(16) << ekf_mat->delta_z[1] << " " << std::setprecision(16) << ekf_mat->delta_z[2]
+             << " " << std::endl;
 }

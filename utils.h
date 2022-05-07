@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-03 20:29:27
- * @LastEditTime        : 2022-05-06 17:13:39
+ * @LastEditTime        : 2022-05-07 17:04:36
  * @LastEditors         : Fantongwen
  * @Description         : 需要的工具函数,和数据结构
  * @FilePath            : \IndoorLooseComb\utils.h
@@ -11,6 +11,7 @@
 #include "Eigen/Dense"
 #include "fstream"
 #include <cmath>
+#include <iostream>
 
 // 载体坐标系
 typedef enum EN_BFRAME
@@ -104,13 +105,23 @@ typedef struct ST_EKF_MAT
         P_mat = Phi_mat * P_mat * Phi_mat.transpose() + Q_mat;
     }
 
-    void ekf_measurement()
+    bool ekf_measurement()
     {
         Eigen::Matrix<double, 16, 16> I_16;
         I_16.setIdentity();
+        Eigen::Matrix3d C_mat = (H_mat * P_mat * H_mat.transpose() + R_mat);
+        Eigen::Vector3d INNO = (delta_z - H_mat * delta_x);
+        if (INNO[0]>36*C_mat(0,0) || 
+        INNO[1]>36*C_mat(1,1) || 
+        INNO[2]>36*C_mat(2,2))
+        {
+            std::cout << "inno " << INNO.transpose() << std::endl;
+            return false;
+        }
         K_mat = P_mat * H_mat.transpose() * ((H_mat * P_mat * H_mat.transpose() + R_mat).inverse());
         delta_x = delta_x + K_mat * (delta_z - H_mat * delta_x);
         P_mat = (I_16 - (K_mat * H_mat)) * P_mat * (I_16 - (K_mat * H_mat)).transpose() + K_mat * R_mat * K_mat.transpose();
+        return true;
     }
 } EKF_MAT_T;
 
@@ -130,6 +141,49 @@ typedef struct ST_SENSOR_PARAM
     Eigen::Vector3d accel_bias;
 } SENSOR_PARAM_T;
 
+// 里程计降采样
+typedef struct ST_ODOMDATA_DOWNSAMPLE
+{
+    double timestamp;
+    double T_threshold;
+    Eigen::Vector3d odom_Distance;
+    double odom_Time;
+    // 初始化
+    ST_ODOMDATA_DOWNSAMPLE(
+        const double &t_init, 
+        const double &thres_init):
+        timestamp(t_init),
+        T_threshold(thres_init),
+        odom_Distance(Eigen::Vector3d::Zero()),
+        odom_Time(0.0)
+    {
+        ;
+    }
+    // downsample 
+    ODOMDATA_T downsample_updata(const ODOMDATA_T& odom_data)
+    {
+        ODOMDATA_T odom_data_ds = odom_data;
+        odom_data_ds.valid = false;
+        double dt;
+        dt = odom_data.timestamp - timestamp;
+        odom_Time += dt;
+        odom_Distance += dt * odom_data.vel_data;
+        if (odom_Time >= T_threshold)
+        {
+            // 时间超过门限,给出降采样后的里程计数据
+            odom_data_ds.vel_data = odom_Distance / odom_Time;
+            odom_data_ds.valid = true;
+            // 状态复位
+            odom_Distance.setZero();
+            odom_Time = 0.0;
+        }
+
+        timestamp = odom_data.timestamp;
+        return odom_data_ds;
+    }
+
+} ODOMDATA_DOWNSAMPLE_T;
+
 const Eigen::Vector3d G_N = {0, 0, -9.7936};
 const double R2D = (180.0 / M_PI);
 const double D2R = (M_PI / 180.0);
@@ -138,14 +192,16 @@ const double SQRT_HOUR2S = 60.0;
 const double MGAL = 1.0E-5;
 // IMU参数
 const double VRW = 0.1 / SQRT_HOUR2S;
-const double ARW = 0.001 * D2R / SQRT_HOUR2S;
-const double GYRO_BIAS_STD = 10 * D2R / HOUR2S;
+const double ARW = 0.1 * D2R / SQRT_HOUR2S;
+const double GYRO_BIAS_STD = 50 * D2R / HOUR2S;
 const double GYRO_BIAS_CORR_TIME = 1 * HOUR2S;
 const double ACCEL_BIAS_STD = 50 * MGAL;
 const double ACCEL_BIAS_CORR_TIME = 1 * HOUR2S;
 // ODOM参数
-const double ODOM_STD = 1.2;
-const double ODOM_SCALE_STD = 10000 * 1e-6;
+const double ODOM_STD = 0.05;
+const double ODOM_SCALE_STD = 0.00001;
+
+const double ODOMDATA_INTERVAL_SET = 0.1;
 
 Eigen::Matrix3d Vector2CrossMatrix(const Eigen::Vector3d &a);
 Eigen::Vector3d DCM2Euler(const Eigen::Matrix3d &dcm);

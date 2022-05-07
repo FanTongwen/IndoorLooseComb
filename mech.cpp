@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-04 09:57:41
- * @LastEditTime        : 2022-05-06 20:30:56
+ * @LastEditTime        : 2022-05-06 21:04:14
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\mech.cpp
@@ -41,6 +41,7 @@ void mech::mech_updatatick(const IMUDATA_T &imu_data)
     q_bb.w() = cos(0.5 * phi.norm());
     q_bb.vec() = sin(0.5 * phi.norm()) / (0.5 * phi.norm()) * 0.5 * phi;
     q_bn_new = pva_state->q_bn * q_bb;
+    q_bn_new.normalize();
     pva_state->q_bn = q_bn_new;
     pva_state->c_bn = q_bn_new.matrix();
     pva_state->e_bn = DCM2Euler(pva_state->c_bn);

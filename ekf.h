@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-05 14:02:15
- * @LastEditTime        : 2022-05-06 16:23:17
+ * @LastEditTime        : 2022-05-07 16:28:20
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\ekf.h
@@ -28,10 +28,11 @@ class ekf
         EKFDATA_T *ekfdata_last;
         ODOM_INFO_T *ekf_odom_info;
         SENSOR_PARAM_T *ekf_sensor_param;
+        ST_ODOMDATA_DOWNSAMPLE *ekf_odom_ds;
         std::ofstream fekfdata;
     public:
         void EKFpredictUpdate(const double &delta_t);
-        void EKFmeasurementUpdate(const double &delta_t);
+        bool EKFmeasurementUpdate(const double &delta_t);
         void EKFcorrectUpdate();
         void EKFdataCompensate(const EKFDATA_T &ekf_data);
         void EKFUpdate(const EKFDATA_T &ekf_data, int &odom_update_flag);
