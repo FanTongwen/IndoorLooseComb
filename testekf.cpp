@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-06 16:31:21
- * @LastEditTime        : 2022-05-07 16:59:39
+ * @LastEditTime        : 2022-05-08 10:54:17
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\testekf.cpp
@@ -37,9 +37,9 @@ int main(int argc, char** argv)
     odominfo_0.l_bv << 0, 0, 1.099;
 
     SENSOR_PARAM_T sensorparam_0;
-    sensorparam_0.gyro_bias << 3.4479949e-4, -1.034033e-03, 8.97390124e-05;
+    sensorparam_0.gyro_bias << 3.4479949e-4, -1.734033e-04, 8.97390124e-05;
     sensorparam_0.accel_bias << 104.4e-5, -111.74e-5, 314.06e-5;
-    sensorparam_0.odom_scale_factor << 0.01, 0, 0;
+    sensorparam_0.odom_scale_factor << 0.0, 0, 0;
 
     ekf *ekftest;
     ekftest = new ekf(pvastate_0, ekfdata, odominfo_0, sensorparam_0);

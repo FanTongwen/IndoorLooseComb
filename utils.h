@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-03 20:29:27
- * @LastEditTime        : 2022-05-07 17:04:36
+ * @LastEditTime        : 2022-05-08 11:01:01
  * @LastEditors         : Fantongwen
  * @Description         : 需要的工具函数,和数据结构
  * @FilePath            : \IndoorLooseComb\utils.h
@@ -111,9 +111,9 @@ typedef struct ST_EKF_MAT
         I_16.setIdentity();
         Eigen::Matrix3d C_mat = (H_mat * P_mat * H_mat.transpose() + R_mat);
         Eigen::Vector3d INNO = (delta_z - H_mat * delta_x);
-        if (INNO[0]>36*C_mat(0,0) || 
-        INNO[1]>36*C_mat(1,1) || 
-        INNO[2]>36*C_mat(2,2))
+        if (INNO[0]>35.0*C_mat(0,0) || 
+        INNO[1]>25.0*C_mat(1,1) || 
+        INNO[2]>30.0*C_mat(2,2))
         {
             std::cout << "inno " << INNO.transpose() << std::endl;
             return false;
@@ -199,9 +199,9 @@ const double ACCEL_BIAS_STD = 50 * MGAL;
 const double ACCEL_BIAS_CORR_TIME = 1 * HOUR2S;
 // ODOM参数
 const double ODOM_STD = 0.05;
-const double ODOM_SCALE_STD = 0.00001;
+const double ODOM_SCALE_STD = 0.001;
 
-const double ODOMDATA_INTERVAL_SET = 0.1;
+const double ODOMDATA_INTERVAL_SET = 0.2;
 
 Eigen::Matrix3d Vector2CrossMatrix(const Eigen::Vector3d &a);
 Eigen::Vector3d DCM2Euler(const Eigen::Matrix3d &dcm);
@@ -209,3 +209,4 @@ Eigen::Quaterniond Euler2Quart(const Eigen::Vector3d &vec);
 
 void ReadIMUdata(std::ifstream &fimudata, IMUDATA_T &imu_data);
 void ReakEKFdata(std::ifstream &fimudata, EKFDATA_T &ekf_data);
+void ReadEKFdata(std::ifstream &fimudata, std::ifstream &fodomdata, const int &odom_readflag, EKFDATA_T &ekf_data);

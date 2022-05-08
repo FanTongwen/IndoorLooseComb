@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-04 09:57:41
- * @LastEditTime        : 2022-05-06 21:04:14
+ * @LastEditTime        : 2022-05-08 10:22:02
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\mech.cpp
@@ -35,7 +35,8 @@ void mech::mech_updatatick(const IMUDATA_T &imu_data)
     dt = imu_data.timestamp - pva_state->timestamp;
     // 姿态更新
     Eigen::Vector3d phi;
-    phi = imu_data.gyro_data * dt;
+    phi = imu_data.gyro_data * dt + (gyro_data_last * dt).cross(imu_data.gyro_data * dt) / 12.0;
+    gyro_data_last = imu_data.gyro_data;
     Eigen::Quaterniond q_bb;
     Eigen::Quaterniond q_bn_new;
     q_bb.w() = cos(0.5 * phi.norm());

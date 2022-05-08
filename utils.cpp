@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-04 10:29:16
- * @LastEditTime        : 2022-05-06 17:01:57
+ * @LastEditTime        : 2022-05-07 17:36:47
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\utils.cpp
@@ -72,4 +72,22 @@ void ReakEKFdata(std::ifstream &fimudata, EKFDATA_T &ekf_data)
     odomdata.timestamp = imudata.timestamp;
     ekf_data.imu_data = imudata;
     ekf_data.odom_data = odomdata;
+}
+
+// TODO: 读取小车数据
+void ReadEKFdata(std::ifstream &fimudata, std::ifstream &fodomdata, const int &odom_readflag, EKFDATA_T &ekf_data)
+{
+    IMUDATA_T imu_data;
+
+    double gx, gy, gz, ax, ay, az;
+    fimudata >> imu_data.timestamp >> gx >> gy >> gz
+    >> ax >> ay >> az;
+    imu_data.gyro_data << -gx, -gy, gz;
+    imu_data.accel_data << -ax, -ay, az;
+
+    if (odom_readflag == 1)
+    {
+        ODOMDATA_T odom_data;
+        
+    }
 }

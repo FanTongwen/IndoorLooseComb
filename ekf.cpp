@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-05 16:40:48
- * @LastEditTime        : 2022-05-07 16:28:13
+ * @LastEditTime        : 2022-05-08 10:45:38
  * @LastEditors         : Fantongwen
  * @Description         : 
  * @FilePath            : \IndoorLooseComb\ekf.cpp
@@ -28,7 +28,7 @@ ekf::ekf(
     I_3_3.setIdentity();
     P_mat.block<3, 3>(9, 9) = I_3_3 * GYRO_BIAS_STD * GYRO_BIAS_STD;
     P_mat.block<3, 3>(12, 12) = I_3_3 * ACCEL_BIAS_STD * ACCEL_BIAS_STD;
-    P_mat(15, 15) = ODOM_SCALE_STD * ODOM_SCALE_STD;
+    P_mat(15, 15) = 0;
     ekf_mat->P_mat = P_mat;
     Eigen::Matrix<double, 16, 13> G_mat;
     G_mat.setZero();
@@ -85,7 +85,15 @@ void ekf::EKFpredictUpdate(const double &delta_t)
     F_mat.block<3, 3>(3, 6) = Vector2CrossMatrix(a_n);
     F_mat.block<3, 3>(3, 12) = pva_state->c_bn;
     F_mat.block<3, 3>(6, 9) = -pva_state->c_bn;
-    ekf_mat->Phi_mat = I_16_16 + F_mat * delta_t;
+    if (delta_t < 1.0)
+    {
+        ekf_mat->Phi_mat = I_16_16 + F_mat * delta_t;
+    }
+    else
+    {
+        ekf_mat->Phi_mat = I_16_16 + F_mat * 0.005;
+    }
+    
     // 求G_mat
     Eigen::Matrix<double, 16, 13> G_mat;
     Eigen::Matrix<double, 16, 13> G_mat_last;
@@ -110,9 +118,14 @@ void ekf::EKFpredictUpdate(const double &delta_t)
     ekf_mat->q_mat = q_mat;
     // 求Q_mat
     Eigen::Matrix<double, 16, 16> Q_mat;
-    Q_mat = 0.5 * (ekf_mat->Phi_mat * G_mat_last * q_mat *
-                   G_mat_last.transpose() * ekf_mat->Phi_mat.transpose() +
-                   G_mat * q_mat * G_mat.transpose()) * delta_t;
+    if (delta_t < 1.0)
+    {
+        Q_mat = 0.5 * (ekf_mat->Phi_mat * G_mat_last * q_mat * G_mat_last.transpose() * ekf_mat->Phi_mat.transpose() + G_mat * q_mat * G_mat.transpose()) * delta_t;
+    }
+    else
+    {
+        Q_mat = 0.5 * (ekf_mat->Phi_mat * G_mat_last * q_mat * G_mat_last.transpose() * ekf_mat->Phi_mat.transpose() + G_mat * q_mat * G_mat.transpose()) * 0.005;
+    }
     ekf_mat->Q_mat = Q_mat;
     ekf_mat->ekf_predict();
     pva_state = NULL;

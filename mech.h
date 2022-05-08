@@ -1,7 +1,7 @@
 /*** 
  * @Author              : Fantongwen
  * @Date                : 2022-05-03 20:24:46
- * @LastEditTime        : 2022-05-05 16:23:32
+ * @LastEditTime        : 2022-05-08 10:17:05
  * @LastEditors         : Fantongwen
  * @Description         : 室内机械编排,较为粗糙
  * @FilePath            : \IndoorLooseComb\mech.h
@@ -18,6 +18,7 @@ class mech
         ~mech();
     public:
         PVASTATE_T *pva_state;
+        Eigen::Vector3d gyro_data_last = {0, 0, 0};
         std::ofstream fmechdata;
 
     public:
